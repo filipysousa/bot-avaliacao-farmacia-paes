@@ -1,0 +1,20 @@
+# Dependências (reinstalar com: npm install)
+node_modules/
+
+# DADOS PRIVADOS — nunca enviar:
+# avaliações dos clientes, telefones, senha do painel, configurações (token do Telegram), registro
+dados/
+
+# Sessão do WhatsApp (dá acesso à conta da farmácia)
+sessao/
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Executável gerado (npm run build)
+dist/
+
+# Outros
+*.log
+*.tmp
+avaliacoes.csv
+.env
