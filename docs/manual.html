@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Manual - Bot de Avaliação - Farmácia Paes</title>
+<style>
+  @page { size: A4; margin: 11mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font: 9.8pt/1.36 "Segoe UI", Arial, sans-serif; color: #17211d; margin: 0; }
+  .pagina { height: 274mm; overflow: hidden; }
+  td, th { padding: 4px 7px !important; }
+  h2 { margin-top: 10px !important; }
+  .balcao td { padding: 7px 10px !important; }
+  .pagina { page-break-after: always; }
+  .pagina:last-child { page-break-after: auto; }
+  .cab { display: flex; align-items: center; gap: 12px; border-bottom: 3px solid #0f7a55; padding-bottom: 8px; margin-bottom: 12px; }
+  .cab svg { width: 44px; height: 44px; flex-shrink: 0; }
+  .cab h1 { font-size: 17pt; margin: 0; color: #0a5c40; }
+  .cab p { margin: 1px 0 0; color: #5f6d67; font-size: 9.5pt; }
+  h2 { font-size: 11.5pt; color: #0a5c40; margin: 13px 0 5px; border-left: 4px solid #0f7a55; padding-left: 7px; }
+  p { margin: 4px 0; }
+  ol, ul { margin: 4px 0; padding-left: 20px; }
+  li { margin: 2px 0; }
+  b { color: #0a5c40; }
+  .cmd { font: 700 10pt Consolas, monospace; background: #e3f4ec; color: #0a5c40; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; margin: 5px 0; }
+  td, th { border: 1px solid #cfd8d4; padding: 5px 7px; vertical-align: top; text-align: left; }
+  th { background: #f0f5f3; font-size: 9.5pt; }
+  .aviso { background: #fff6dc; border: 1px solid #f0d27a; border-radius: 6px; padding: 7px 10px; margin: 8px 0; }
+  .ok { background: #e3f4ec; border: 1px solid #a8dcc4; border-radius: 6px; padding: 7px 10px; margin: 8px 0; }
+  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .rodape { color: #8a9691; font-size: 8.5pt; margin-top: 10px; text-align: center; }
+  /* página 2: guia do balcão, letras maiores */
+  .balcao { font-size: 11.5pt; }
+  .balcao .cmd { font-size: 14pt; padding: 2px 8px; }
+  .balcao h2 { font-size: 13.5pt; }
+  .exemplo { background: #efeae2; border-radius: 8px; padding: 10px 12px; margin: 6px 0; }
+  .balao { background: #fff; border-radius: 0 8px 8px 8px; padding: 7px 10px; display: inline-block; box-shadow: 0 1px 1px rgba(0,0,0,.15); max-width: 85%; margin: 3px 0; }
+  .balao.eu { background: #d9fdd3; border-radius: 8px 0 8px 8px; margin-left: auto; display: block; width: fit-content; }
+</style>
+</head>
+<body>
+
+<!-- ============================ PÁGINA 1 ============================ -->
+<section class="pagina">
+  <div class="cab">
+    <svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f7a55"/><path d="M26 14h12v12h12v12H38v12H26V38H14V26h12z" fill="#fff"/><circle cx="47" cy="47" r="10" fill="#f5b301" stroke="#0f7a55" stroke-width="3"/></svg>
+    <div><h1>Bot de Avaliação do Atendimento</h1><p>Farmácia Paes · Beberibe · WhatsApp (85) 99806-1180 · Manual resumido</p></div>
+  </div>
+
+  <p>Quando um atendimento no WhatsApp termina, o bot pede ao cliente uma <b>nota de 0 a 10</b>. As notas, os gráficos e os avisos ficam num <b>painel</b> que abre no computador ou no celular.</p>
+
+  <h2>1. Instalação (uma vez só)</h2>
+  <ol>
+    <li>Extraia o arquivo <b>.zip</b> numa pasta do computador, por exemplo <span class="cmd">C:\BotFarmaciaPaes</span>.<br>
+      <small>⚠️ Não use pastas do OneDrive ou do Google Drive.</small></li>
+    <li>Dê dois cliques em <b>BotFarmaciaPaes.exe</b>. Se aparecer <i>"O Windows protegeu o computador"</i>, clique em <b>Mais informações › Executar assim mesmo</b>.</li>
+    <li>O painel abre no navegador. <b>Crie a senha</b> (mínimo de 8 caracteres) e guarde-a bem.</li>
+    <li>No aviso <i>"Ligar o bot automaticamente quando o computador ligar?"</i>, clique em <b>Sim, ligar com o Windows</b>.</li>
+    <li>Na tela <b>📱 Conexão</b>, escaneie o QR code com o celular da farmácia:<br>
+      WhatsApp › <b>⋮</b> › <b>Aparelhos conectados</b> › <b>Conectar um aparelho</b>.</li>
+    <li>Em <b>👥 Atendentes</b>, cadastre a equipe. Em <b>🔔 Avisos ao farmacêutico</b>, coloque o número do farmacêutico.</li>
+  </ol>
+  <div class="aviso">🖥️ O bot roda <b>escondido, sem janela</b>. Para abrir o painel, dê <b>dois cliques no BotFarmaciaPaes.exe</b> de novo (ou acesse <span class="cmd">localhost:3210</span> no navegador). O computador precisa estar <b>ligado e com internet</b>. A equipe continua atendendo normalmente pelo celular.</div>
+
+  <h2>2. Como funciona no dia a dia</h2>
+  <ul>
+    <li>O atendente digita <span class="cmd">#fim ana</span> na conversa e o bot pede a nota na hora. O cliente não vê o comando.</li>
+    <li>Se ninguém digitar, o bot pede sozinho depois de <b>30 minutos</b> de conversa parada, dentro do horário configurado.</li>
+    <li><b>Nota de 0 a 6:</b> o bot pergunta o que pode melhorar, avisa o farmacêutico, e a avaliação vai para <b>⚠️ A resolver</b>.</li>
+    <li><b>Nota alta:</b> o bot agradece e, se estiver ligado, convida o cliente a avaliar a farmácia no Google.</li>
+  </ul>
+
+  <h2>3. Telas do painel</h2>
+  <table>
+    <tr><th style="width:27%">Tela</th><th>Para que serve</th></tr>
+    <tr><td>📊 Painel</td><td>Nota média, NPS, gráfico da evolução e ranking dos atendentes</td></tr>
+    <tr><td>⭐ Avaliações</td><td>Todas as notas, com filtros e botão <b>Exportar para Excel</b></td></tr>
+    <tr><td>⚠️ A resolver</td><td>Notas baixas: abrir a conversa, falar com o cliente e marcar como resolvido</td></tr>
+    <tr><td>📱 Conexão</td><td>QR code do WhatsApp e endereço para abrir o painel pelo celular</td></tr>
+    <tr><td>💬 Mensagens</td><td>Alterar os textos enviados ao cliente e o link do Google</td></tr>
+    <tr><td>🔔 Avisos / ⚙️ Config.</td><td>Alertas e resumos ao farmacêutico, horários, plantão, backup e senha</td></tr>
+  </table>
+
+  <div class="duas">
+    <div>
+      <h2>4. Pelo celular</h2>
+      <p>Em <b>Conexão</b>, ligue <b>"Permitir acesso pela internet"</b>. Abra o endereço mostrado no celular e entre com a mesma senha. O endereço <b>muda quando o programa reinicia</b>; o novo é enviado ao farmacêutico.</p>
+    </div>
+    <div>
+      <h2>5. Problemas comuns</h2>
+      <ul>
+        <li><b>Desconectou / QR não aparece:</b> em Conexão, clique em <b>🔄 Gerar QR code novo</b>.</li>
+        <li><b>Desligar o bot:</b> ⚙️ Configurações › <b>Desligar o bot</b>.</li>
+        <li><b>Esqueci a senha:</b> desligue o bot, apague <span class="cmd">dados\acesso.json</span> e abra de novo.</li>
+        <li><b>Não responda</b> aos avisos do bot pelo WhatsApp.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="ok">🔒 As avaliações ficam só neste computador, na pasta <b>dados</b>, com backup diário automático. Use o bot <b>só para avaliações</b>, nunca para envio em massa.</div>
+</section>
+
+<!-- ============================ PÁGINA 2 ============================ -->
+<section class="pagina balcao">
+  <div class="cab">
+    <svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f7a55"/><path d="M26 14h12v12h12v12H38v12H26V38H14V26h12z" fill="#fff"/><circle cx="47" cy="47" r="10" fill="#f5b301" stroke="#0f7a55" stroke-width="3"/></svg>
+    <div><h1>Guia rápido do atendente</h1><p>Avaliação do atendimento no WhatsApp · Farmácia Paes · imprima e deixe no balcão</p></div>
+  </div>
+
+  <h2>Ao terminar o atendimento, digite na conversa do cliente:</h2>
+  <table>
+    <tr><td style="width:34%"><span class="cmd">#fim ana</span></td><td><b>Encerra e pede a nota</b> ao cliente, registrando o seu nome.<br><small>Troque <i>ana</i> pelo <b>seu código</b> (veja abaixo).</small></td></tr>
+    <tr><td><span class="cmd">#ana</span></td><td>Só avisa que <b>você está atendendo</b>. Se esquecer o #fim, o pedido automático já sai com o seu nome.</td></tr>
+    <tr><td><span class="cmd">#fim</span></td><td>Encerra e pede a nota <b>sem identificar</b> quem atendeu.</td></tr>
+    <tr><td><span class="cmd">#semnota</span></td><td><b>Não pedir avaliação</b> nesta conversa (fornecedor, parente, colega…).</td></tr>
+  </table>
+
+  <h2>Como fica na conversa</h2>
+  <div class="exemplo">
+    <span class="balao eu">Seu pedido sai em 20 minutos. Obrigada! 😊</span>
+    <span class="balao eu"><span class="cmd">#fim ana</span> &nbsp;<small>← o bot apaga na hora, o cliente não vê</small></span>
+    <span class="balao eu">Olá, Maria! 😊 Aqui é da <b>Farmácia Paes</b>… De <b>0 a 10</b>, que nota você dá para o atendimento?</span>
+    <span class="balao">10</span>
+    <span class="balao eu">Muito obrigado pela nota <b>10</b>! 💚</span>
+  </div>
+
+  <h2>Códigos da equipe</h2>
+  <table>
+    <tr><th>Nome</th><th style="width:45%">Comando para encerrar</th></tr>
+    <tr><td>&nbsp;</td><td><span class="cmd">#fim</span> ____________</td></tr>
+    <tr><td>&nbsp;</td><td><span class="cmd">#fim</span> ____________</td></tr>
+    <tr><td>&nbsp;</td><td><span class="cmd">#fim</span> ____________</td></tr>
+    <tr><td>&nbsp;</td><td><span class="cmd">#fim</span> ____________</td></tr>
+  </table>
+
+  <h2>Lembretes</h2>
+  <ul>
+    <li>Use o <span class="cmd">#fim</span> <b>só quando o atendimento terminar mesmo</b>.</li>
+    <li>Escreva o comando <b>sozinho na mensagem</b>, sem outro texto junto.</li>
+    <li>Use os códigos <b>cadastrados no painel</b> (sem acento e sem espaço).</li>
+    <li>Nota baixa? O farmacêutico é avisado e vai entrar em contato com o cliente.</li>
+  </ul>
+  <p class="rodape">Os códigos de cada atendente são cadastrados pelo farmacêutico no painel, em 👥 Atendentes.</p>
+</section>
+
+</body>
+</html>

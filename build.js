@@ -59,6 +59,27 @@ fs.writeFileSync(seaConfig, JSON.stringify({
     .map((n) => [n, path.join(__dirname, 'public', n)])),
 }, null, 2));
 execFileSync(process.execPath, ['--build-sea', seaConfig], { stdio: 'inherit' });
+semJanela(path.join(SAIDA, 'BotFarmaciaPaes.exe'));
+
+// Troca o tipo do .exe de "console" (3) para "gráfico" (2): o Windows não abre a janela preta.
+// O campo Subsystem fica 0x5C bytes depois da assinatura "PE\0\0".
+function semJanela(exe) {
+  const fd = fs.openSync(exe, 'r+');
+  try {
+    const b = Buffer.alloc(4);
+    fs.readSync(fd, b, 0, 4, 0x3c);
+    const pe = b.readUInt32LE(0);
+    fs.readSync(fd, b, 0, 4, pe);
+    if (b.toString('latin1') !== 'PE\0\0') throw new Error('Cabeçalho PE não encontrado');
+    const sub = Buffer.alloc(2);
+    fs.readSync(fd, sub, 0, 2, pe + 0x5c);
+    if (sub.readUInt16LE(0) !== 3) throw new Error(`Subsystem inesperado: ${sub.readUInt16LE(0)}`);
+    sub.writeUInt16LE(2, 0);
+    fs.writeSync(fd, sub, 0, 2, pe + 0x5c);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
 
 console.log('3/3 Copiando arquivos...');
 fs.copyFileSync(path.join(__dirname, 'LEIA-ME.md'), path.join(SAIDA, 'LEIA-ME.md'));

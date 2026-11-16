@@ -12,22 +12,42 @@ const cfg = store.config();
 const porta = Number(process.env.PORTA) || cfg.porta;
 const endereco = `http://localhost:${porta}`;
 
-server.criar().listen(porta, '127.0.0.1', () => {
-  log(`Painel aberto em ${endereco}`);
-  if (!process.env.BOT_REINICIO && !process.env.SEM_NAVEGADOR) {
-    spawn('cmd', ['/c', 'start', '', endereco], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-  }
-}).on('error', (e) => {
-  if (e.code === 'EADDRINUSE') {
-    log(`O painel já está aberto em outra janela (porta ${porta}). Feche a outra antes de abrir de novo.`);
-    process.exit(0);
-  }
-  throw e;
-});
+function abrirNavegador() {
+  spawn('cmd', ['/c', 'start', '', endereco], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+}
 
-agenda.iniciar();
-wa.iniciar();
-if (cfg.acessoRemoto.ativo) tunnel.ligar(porta);
+// O bot já está rodando (invisível)? Pergunta ao próprio painel.
+async function jaRodando() {
+  try {
+    const r = await fetch(`http://127.0.0.1:${porta}/api/sessao`, { signal: AbortSignal.timeout(2000) });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+function ligarTudo() {
+  server.criar().listen({ port: porta, host: '127.0.0.1', exclusive: true }, () => {
+    log(`Painel aberto em ${endereco}`);
+    if (!process.env.BOT_REINICIO && !process.env.SEM_NAVEGADOR) abrirNavegador();
+    agenda.iniciar();
+    wa.iniciar();
+    if (cfg.acessoRemoto.ativo) tunnel.ligar(porta);
+  }).on('error', (e) => {
+    log(`Não foi possível abrir o painel na porta ${porta}: ${e.message}`);
+    process.exit(e.code === 'EADDRINUSE' ? 0 : 1);
+  });
+}
+
+jaRodando().then((sim) => {
+  if (sim) {
+    // Só abre o painel do bot que já está ligado e sai, sem criar um segundo bot
+    if (!process.env.SEM_NAVEGADOR) abrirNavegador();
+    setTimeout(() => process.exit(0), 1500);
+  } else {
+    ligarTudo();
+  }
+});
 
 // Novo endereço do acesso pelo celular: avisa o farmacêutico quando o WhatsApp estiver pronto
 tunnel.eventos.on('url', (url) => {

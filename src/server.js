@@ -10,6 +10,7 @@ const tunnel = require('./tunnel');
 const agenda = require('./agenda');
 const notif = require('./notificacoes');
 const auth = require('./auth');
+const autostart = require('./autostart');
 const { log, registro, preencher, soDigitos, formatarTelefone } = require('./util');
 
 // Arquivos do painel: dentro do .exe ficam embutidos; no desenvolvimento, na pasta "public"
@@ -73,6 +74,37 @@ function criar() {
   });
 
   app.get('/api/registro', (req, res) => res.json(registro.slice(-200)));
+
+  // ------------------------------------------------------------ computador
+  app.get('/api/sistema', async (req, res) => {
+    res.json({
+      iniciarComWindows: await autostart.ativo(),
+      perguntado: Boolean(store.agenda.perguntouIniciarComWindows),
+      ehExe: autostart.ehExe,
+    });
+  });
+
+  app.post('/api/sistema/iniciar-com-windows', async (req, res) => {
+    try {
+      await autostart.definir(Boolean(req.body.ativo));
+      store.agenda.perguntouIniciarComWindows = true;
+      store.salvarAgenda();
+      res.json({ ok: true, iniciarComWindows: await autostart.ativo() });
+    } catch (e) {
+      res.status(400).json({ erro: e.message });
+    }
+  });
+
+  app.post('/api/sistema/desligar', async (req, res) => {
+    if (auth.ehRemoto(req)) return res.status(403).json({ erro: 'Por segurança, só dá para desligar o bot no computador da farmácia.' });
+    log('Bot desligado pelo painel.');
+    res.json({ ok: true });
+    setTimeout(async () => {
+      tunnel.desligar();
+      await wa.encerrar();
+      process.exit(0);
+    }, 500);
+  });
 
   // ------------------------------------------------------------ avaliações
   app.get('/api/resumo', (req, res) => res.json(stats.resumo(req.query)));

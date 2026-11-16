@@ -28,7 +28,7 @@ try { // mantém o arquivo de registro pequeno
 } catch { /* ainda não existe */ }
 function log(texto) {
   const linha = `[${new Date().toLocaleString('pt-BR')}] ${texto}`;
-  console.log(linha);
+  try { console.log(linha); } catch { /* sem janela */ }
   registro.push(linha);
   if (registro.length > 300) registro.shift();
   try { fs.appendFileSync(ARQ_LOG, `${linha}\n`); } catch { /* sem problema */ }

@@ -356,14 +356,20 @@ function distribuicao(d) {
 // ------------------------------------------------------------------ páginas
 
 async function paginaPainel(el, valido) {
-  const r = await api(`/api/resumo?${query(intervalo())}`);
+  const [r, sis] = await Promise.all([api(`/api/resumo?${query(intervalo())}`), api('/api/sistema')]);
   if (!valido()) return;
   const s = S.status;
+  const perguntaWindows = sis.ehExe && !sis.perguntado && !S.status.acessoAtualRemoto ? `
+    <div class="aviso verde" id="pergunta-windows"><span class="texto">🖥️ <b>Ligar o bot automaticamente quando o computador ligar?</b><br>
+      <small>Assim ninguém precisa lembrar de abrir o programa. Ele roda escondido, sem janela.</small></span>
+      <button class="btn pequeno primario" data-windows="1">Sim, ligar com o Windows</button>
+      <button class="btn pequeno" data-windows="0">Agora não</button></div>` : '';
   el.innerHTML = `
     <div class="topo"><div><h1>Painel</h1><p>Como os clientes avaliam o atendimento no WhatsApp</p></div></div>
     <div style="margin-bottom:16px">${chipsPeriodo()}</div>
+    ${perguntaWindows}
     ${avisoConexao()}
-    ${r.pendentes ? `<div class="aviso vermelho"><span class="texto">⚠️ <b>${r.pendentes}</b> nota(s) baixa(s) aguardando resolução.</span><a class="btn pequeno" href="#resolver">Ver</a></div>` : ''}
+    ${r.pendentes ?`<div class="aviso vermelho"><span class="texto">⚠️ <b>${r.pendentes}</b> nota(s) baixa(s) aguardando resolução.</span><a class="btn pequeno" href="#resolver">Ver</a></div>` : ''}
     <div class="grade grade-kpi">
       <div class="cartao kpi"><div class="rotulo">Nota média</div><div class="valor">${br(r.media)}</div><div class="detalhe">de 0 a 10</div></div>
       <div class="cartao kpi"><div class="rotulo">NPS</div><div class="valor">${r.nps ?? '–'}</div><div class="detalhe">😀 ${r.promotores} · 😐 ${r.neutros} · 😞 ${r.detratores}</div></div>
@@ -383,6 +389,12 @@ async function paginaPainel(el, valido) {
       <div class="cartao"><h2>Aguardando resposta do cliente</h2><p class="sub">Pedidos de nota enviados que ainda não foram respondidos</p><div id="aguardando"></div></div>
     </div>`;
   ligarPeriodo(el, mostrarPagina);
+  $$('[data-windows]', el).forEach((b) => b.addEventListener('click', async () => {
+    const ligar = b.dataset.windows === '1';
+    await acao(b, () => api('/api/sistema/iniciar-com-windows', { body: { ativo: ligar } }),
+      ligar ? 'Pronto! O bot vai ligar sozinho com o Windows ✓' : 'Ok. Dá para ativar depois em Configurações.');
+    $('#pergunta-windows', el)?.remove();
+  }));
   const desenharAguardando = () => {
     const box = $('#aguardando', el);
     if (!box) return;
@@ -828,6 +840,13 @@ async function paginaConfiguracoes(el, valido) {
       <div class="acoes"><button class="btn" id="backup">Fazer backup agora</button>
         <span class="ajuda">Último: ${S.extra.ultimoBackup ? dataHora(S.extra.ultimoBackup) : 'nenhum'}</span></div></div>
     <div class="salvar-fixo"><button class="btn primario" id="salvar">💾 Salvar configurações</button></div>
+    <div class="cartao" style="margin-top:16px"><h2>🖥️ Computador</h2>
+      <p class="sub">O bot roda escondido, sem janela. Para abrir este painel, dê dois cliques no <b>BotFarmaciaPaes.exe</b> (ou acesse <b>localhost:3210</b> no navegador).</p>
+      <label class="interruptor"><input type="checkbox" id="iniciar-windows"><div><b>Iniciar junto com o Windows</b>
+        <small>Liga o bot sozinho quando o computador é ligado, sem abrir o navegador.</small></div></label>
+      ${S.status.acessoAtualRemoto ? '' : `<div class="acoes" style="margin-top:10px"><button class="btn perigo" id="desligar">⏻ Desligar o bot</button>
+        <span class="ajuda">Para ligar de novo, abra o BotFarmaciaPaes.exe.</span></div>`}
+    </div>
     <div class="cartao" style="margin-top:16px"><h2>🔒 Segurança</h2>
       <form id="form-senha" class="linha">
         <label class="campo"><span>Senha atual</span><input type="password" id="s-atual" autocomplete="current-password" required></label>
@@ -853,7 +872,19 @@ async function paginaConfiguracoes(el, valido) {
     await acao($('button', ev.target), () => api('/api/trocar-senha', { body: { atual: $('#s-atual').value, nova: $('#s-nova').value } }), 'Senha alterada ✓');
     ev.target.reset();
   });
-  $('#sair-todos', el).onclick = (e) => acao(e.target, () => api('/api/sair-de-todos', { body: {} }), 'Outros aparelhos desconectados ✓');
+  const chkWin = $('#iniciar-windows', el);
+  api('/api/sistema').then((sis) => { chkWin.checked = sis.iniciarComWindows; });
+  chkWin.addEventListener('change', () => acao(null, async () => {
+    const r = await api('/api/sistema/iniciar-com-windows', { body: { ativo: chkWin.checked } });
+    chkWin.checked = r.iniciarComWindows;
+  }, chkWin.checked ? 'Vai ligar junto com o Windows ✓' : 'Início automático desligado'));
+  $('#desligar', el)?.addEventListener('click', async (e) => {
+    if (!confirm('Desligar o bot? Ele para de pedir avaliações até alguém abrir o BotFarmaciaPaes.exe de novo.')) return;
+    await acao(e.target, () => api('/api/sistema/desligar', { body: {} }));
+    clearTimeout(timerStatus);
+    $('#app').innerHTML = '<div class="login"><div class="cartao"><img src="/icone.svg" alt=""><h1>Bot desligado</h1><p>Para ligar de novo, dê dois cliques no <b>BotFarmaciaPaes.exe</b>.</p></div></div>';
+  });
+  $('#sair-todos', el).onclick =(e) => acao(e.target, () => api('/api/sair-de-todos', { body: {} }), 'Outros aparelhos desconectados ✓');
   $('#sair2', el).onclick = sair;
 }
 

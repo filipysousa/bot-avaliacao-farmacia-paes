@@ -5,15 +5,17 @@ Tudo é controlado por um **painel** que abre no navegador do computador ou no c
 
 ## Primeiro uso
 
-1. Abra o programa. O painel abre sozinho no navegador (endereço `http://localhost:3210`).
+1. Abra o `BotFarmaciaPaes.exe`. O painel abre sozinho no navegador (endereço `http://localhost:3210`).
 2. **Crie a senha do painel**, com pelo menos 8 caracteres. Isso só pode ser feito no computador da farmácia.
-3. Vá em **📱 Conexão** e escaneie o QR code com o celular da farmácia
+3. No aviso do Painel, clique em **Sim, ligar com o Windows** para o bot iniciar sozinho com o computador.
+4. Vá em **📱 Conexão** e escaneie o QR code com o celular da farmácia
    (WhatsApp › ⋮ › **Aparelhos conectados** › **Conectar um aparelho**).
-4. Em **👥 Atendentes**, cadastre a equipe.
-5. Em **🔔 Avisos ao farmacêutico**, coloque o número do farmacêutico e escolha os avisos.
+5. Em **👥 Atendentes**, cadastre a equipe.
+6. Em **🔔 Avisos ao farmacêutico**, coloque o número do farmacêutico e escolha os avisos.
 
-> Deixe a janela preta do programa aberta (pode minimizar). O computador precisa ficar ligado e com internet.
-> A equipe continua atendendo normalmente pelo celular.
+> O bot roda **escondido, sem janela**. Para abrir o painel, dê dois cliques no `.exe` de novo
+> (com o bot já rodando, isso só abre o painel). Para desligar: ⚙️ Configurações › **Desligar o bot**.
+> O computador precisa ficar ligado e com internet. A equipe continua atendendo normalmente pelo celular.
 
 ## Comandos para os atendentes (na conversa do cliente)
 
@@ -53,8 +55,8 @@ farmacêutico recebe o novo endereço automaticamente.
 ## Problemas comuns
 
 - **WhatsApp desconectou:** vá em Conexão e escaneie o QR code de novo.
-- **Esqueci a senha:** feche o programa, apague o arquivo `dados\acesso.json` e abra de novo para criar outra senha.
-- **Ligar junto com o computador:** aperte `Win + R`, digite `shell:startup` e coloque ali um atalho do programa.
+- **Esqueci a senha:** desligue o bot, apague o arquivo `dados\acesso.json` e abra de novo para criar outra senha.
+- **Ligar junto com o computador:** ⚙️ Configurações › **Iniciar junto com o Windows**.
 - **Cuidado:** a conexão com o WhatsApp não é oficial (funciona igual ao WhatsApp Web). Use o bot só para avaliações,
   nunca para disparo em massa, para não arriscar bloqueio do número.
 
