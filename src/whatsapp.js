@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
+const { execFile } = require('child_process');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const store = require('./store');
@@ -124,6 +125,32 @@ async function fecharCliente() {
   client = null;
   if (!antigo) return;
   await Promise.race([antigo.destroy().catch(() => {}), new Promise((r) => setTimeout(r, 15000))]);
+  // Se o navegador não fechou direito, mata o processo para não prender a pasta da sessão
+  try { antigo.pupBrowser?.process()?.kill('SIGKILL'); } catch { /* já fechado */ }
+}
+
+// Um navegador que ficou aberto de uma execução anterior (programa fechado à força, travamento...)
+// prende a pasta da sessão e dá o erro "The browser is already running". Fecha esses navegadores
+// (só os que usam a pasta do bot, nunca o Chrome normal do computador) e apaga as travas velhas.
+function liberarPerfil() {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') return resolve();
+    const alvo = PASTA_SESSAO.replace(/'/g, "''").toLowerCase();
+    const script =
+      "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' or Name='msedge.exe'\" | " +
+      `Where-Object { $_.CommandLine -and $_.CommandLine.ToLower().Contains('${alvo}') } | ` +
+      'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $_.ProcessId }';
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 30000 }, (err, stdout) => {
+      const mortos = String(stdout || '').trim().split(/\s+/).filter(Boolean);
+      if (mortos.length) log(`Fechei ${mortos.length} processo(s) de navegador que ficaram abertos de antes.`);
+      setTimeout(() => {
+        for (const nome of ['lockfile', 'SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+          try { fs.rmSync(path.join(PASTA_SESSAO, 'session', nome), { force: true }); } catch { /* em uso */ }
+        }
+        resolve();
+      }, mortos.length ? 2000 : 0);
+    });
+  });
 }
 
 async function apagarSessao() {
@@ -141,6 +168,7 @@ async function apagarSessao() {
 
 // Não espera o initialize terminar (ele pode demorar ou travar); o vigia cuida disso
 async function iniciar() {
+  await liberarPerfil();
   const c = criarCliente();
   client = c;
   mudarEstado('iniciando', { qr: null });
@@ -150,10 +178,12 @@ async function iniciar() {
     falhasSeguidas++;
     log(`Erro ao iniciar o WhatsApp: ${e.message}`);
     mudarEstado('desconectado', { ultimoErro: e.message });
+    // Navegador preso não é problema da sessão: não apaga o login, só tenta de novo
+    const navegadorPreso = /already running/i.test(e.message);
     // Tenta de novo sozinho; na segunda falha seguida, recomeça com sessão nova
     setTimeout(() => {
       if (c !== client) return;
-      if (falhasSeguidas >= 2) novaSessao(`Erro ao iniciar: ${e.message}`);
+      if (falhasSeguidas >= 2 && !navegadorPreso) novaSessao(`Erro ao iniciar: ${e.message}`);
       else reiniciar(`Erro ao iniciar: ${e.message}`);
     }, 20000);
   });
