@@ -6,6 +6,7 @@ const tunnel = require('./tunnel');
 const agenda = require('./agenda');
 const notif = require('./notificacoes');
 const server = require('./server');
+const atualizador = require('./atualizador');
 const { log } = require('./util');
 
 const cfg = store.config();
@@ -33,6 +34,10 @@ function ligarTudo() {
     agenda.iniciar();
     wa.iniciar();
     if (cfg.acessoRemoto.ativo) tunnel.ligar(porta);
+    atualizador.iniciar({
+      encerrar: async () => { tunnel.desligar(); await wa.encerrar(); },
+      dentroDoHorario: () => wa.dentroDoHorario(),
+    });
   }).on('error', (e) => {
     log(`Não foi possível abrir o painel na porta ${porta}: ${e.message}`);
     process.exit(e.code === 'EADDRINUSE' ? 0 : 1);

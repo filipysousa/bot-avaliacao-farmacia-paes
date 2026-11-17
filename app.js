@@ -35,6 +35,13 @@ if (process.argv.includes('--worker')) {
     });
     p.on('exit', (codigo) => {
       if (codigo === 0) process.exit(0); // desligado de propósito (ou já estava aberto)
+      if (codigo === 75 && ehExe) {
+        // Atualização instalada (src/atualizador.js): o .exe com este nome agora é a versão nova.
+        // Abre a versão nova em segundo plano e este processo (versão velha) sai.
+        spawn(process.execPath, ['--segundo-plano'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+        setTimeout(() => process.exit(0), 500);
+        return;
+      }
       reinicios++;
       if (!ehExe) console.log('\nO bot parou. Religando em 10 segundos...\n');
       setTimeout(ligar, 10000);

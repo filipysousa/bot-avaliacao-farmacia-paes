@@ -11,6 +11,7 @@ const agenda = require('./agenda');
 const notif = require('./notificacoes');
 const auth = require('./auth');
 const autostart = require('./autostart');
+const atualizador = require('./atualizador');
 const { log, registro, preencher, soDigitos, formatarTelefone } = require('./util');
 
 // Arquivos do painel: dentro do .exe ficam embutidos; no desenvolvimento, na pasta "public"
@@ -104,6 +105,22 @@ function criar() {
       await wa.encerrar();
       process.exit(0);
     }, 500);
+  });
+
+  // ------------------------------------------------------------ atualização
+  app.get('/api/atualizacao', (req, res) => res.json(atualizador.status));
+
+  app.post('/api/atualizacao/verificar', async (req, res) => {
+    res.json(await atualizador.verificar());
+  });
+
+  app.post('/api/atualizacao/instalar', async (req, res) => {
+    try {
+      await atualizador.instalar();
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ erro: e.message });
+    }
   });
 
   // ------------------------------------------------------------ avaliações

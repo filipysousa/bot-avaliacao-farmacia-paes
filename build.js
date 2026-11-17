@@ -5,6 +5,13 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const esbuild = require('esbuild');
 
+// O comando que gera o .exe (--build-sea) só existe a partir do Node 25.5
+const [maior, menor] = process.versions.node.split('.').map(Number);
+if (maior < 25 || (maior === 25 && menor < 5)) {
+  console.error(`Este build precisa do Node 25.5 ou mais novo (está usando ${process.version}). Atualize em nodejs.org.`);
+  process.exit(1);
+}
+
 const SAIDA = path.join(__dirname, 'dist', 'BotFarmaciaPaes');
 const TMP = path.join(__dirname, 'dist', 'tmp');
 fs.rmSync(path.join(__dirname, 'dist'), { recursive: true, force: true });

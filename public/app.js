@@ -847,6 +847,10 @@ async function paginaConfiguracoes(el, valido) {
       ${S.status.acessoAtualRemoto ? '' : `<div class="acoes" style="margin-top:10px"><button class="btn perigo" id="desligar">⏻ Desligar o bot</button>
         <span class="ajuda">Para ligar de novo, abra o BotFarmaciaPaes.exe.</span></div>`}
     </div>
+    <div class="cartao" style="margin-top:16px"><h2>🔄 Atualização</h2>
+      <p class="sub">O bot procura versões novas sozinho e instala fora do horário de atendimento. A pasta de dados e a conexão do WhatsApp são mantidas.</p>
+      <div id="atualizacao"><p class="ajuda">Carregando…</p></div>
+    </div>
     <div class="cartao" style="margin-top:16px"><h2>🔒 Segurança</h2>
       <form id="form-senha" class="linha">
         <label class="campo"><span>Senha atual</span><input type="password" id="s-atual" autocomplete="current-password" required></label>
@@ -884,8 +888,70 @@ async function paginaConfiguracoes(el, valido) {
     clearTimeout(timerStatus);
     $('#app').innerHTML = '<div class="login"><div class="cartao"><img src="/icone.svg" alt=""><h1>Bot desligado</h1><p>Para ligar de novo, dê dois cliques no <b>BotFarmaciaPaes.exe</b>.</p></div></div>';
   });
+  cartaoAtualizacao($('#atualizacao', el));
   $('#sair-todos', el).onclick =(e) => acao(e.target, () => api('/api/sair-de-todos', { body: {} }), 'Outros aparelhos desconectados ✓');
   $('#sair2', el).onclick = sair;
+}
+
+// Cartão "Atualização" das Configurações
+async function cartaoAtualizacao(box) {
+  const desenhar = (a) => {
+    if (!box.isConnected) return;
+    const ocupado = a.estado !== 'ocioso';
+    const situacao = {
+      verificando: 'Procurando atualização…',
+      baixando: `Baixando a versão nova… ${a.progresso}%`,
+      instalando: 'Instalando e reiniciando…',
+    }[a.estado] || (a.disponivel
+      ? `<b style="color:var(--verde)">Versão ${esc(a.disponivel.versao)} disponível!</b>`
+      : a.ultimaVerificacao ? `Está na versão mais recente (verificado ${dataHora(a.ultimaVerificacao)}).` : '');
+    box.innerHTML = `
+      <p>Versão instalada: <b>${esc(a.versao)}</b></p>
+      ${situacao ? `<p>${situacao}</p>` : ''}
+      ${a.disponivel?.notas ? `<p class="ajuda" style="white-space:pre-line">${esc(a.disponivel.notas)}</p>` : ''}
+      ${a.erro ? `<p style="color:var(--vermelho)">${esc(a.erro)}</p>` : ''}
+      <div class="acoes">
+        ${a.disponivel && a.podeInstalar
+          ? `<button class="btn primario" id="instalar-att" ${ocupado ? 'disabled' : ''}>⬇️ Atualizar agora</button>`
+          : `<button class="btn" id="verificar-att" ${ocupado ? 'disabled' : ''}>🔄 Verificar atualização</button>`}
+        ${a.disponivel && !a.podeInstalar ? '<span class="ajuda">Só o BotFarmaciaPaes.exe se atualiza sozinho.</span>' : ''}
+      </div>`;
+    $('#verificar-att', box)?.addEventListener('click', (e) => acao(e.target, async () => {
+      const r = await api('/api/atualizacao/verificar', { body: {} });
+      desenhar(r);
+      if (!r.erro && !r.disponivel) toast('O bot já está na versão mais recente ✓');
+    }));
+    $('#instalar-att', box)?.addEventListener('click', async (e) => {
+      const remoto = S.status.acessoAtualRemoto
+        ? '\n\nAtenção: o endereço de acesso pela internet vai mudar, e este aparelho perde a conexão.' : '';
+      if (!confirm(`Atualizar para a versão ${a.disponivel.versao}? O bot reinicia sozinho em cerca de 1 minuto.${remoto}`)) return;
+      e.target.disabled = true;
+      api('/api/atualizacao/instalar', { body: {} }).catch((err) => toast(err.message, true));
+      acompanhar();
+    });
+    if (ocupado) setTimeout(acompanhar, 1500);
+  };
+
+  // Acompanha o download; quando o bot reinicia, espera ele voltar e recarrega a página
+  let reiniciando = false;
+  async function acompanhar() {
+    if (!box.isConnected && !reiniciando) return; // saiu da tela de Configurações
+    try {
+      const a = await api('/api/atualizacao');
+      if (reiniciando) { location.reload(); return; }
+      desenhar(a);
+    } catch {
+      reiniciando = true;
+      if (box.isConnected) box.innerHTML = '<p>Reiniciando o bot com a versão nova… esta página recarrega sozinha.</p>';
+      setTimeout(acompanhar, 3000);
+    }
+  }
+
+  try {
+    desenhar(await api('/api/atualizacao'));
+  } catch (e) {
+    box.innerHTML = `<p style="color:var(--vermelho)">${esc(e.message)}</p>`;
+  }
 }
 
 async function paginaMais(el) {

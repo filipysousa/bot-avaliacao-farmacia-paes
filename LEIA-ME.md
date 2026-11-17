@@ -57,10 +57,14 @@ farmacêutico recebe o novo endereço automaticamente.
 - **WhatsApp desconectou:** vá em Conexão e escaneie o QR code de novo.
 - **Esqueci a senha:** desligue o bot, apague o arquivo `dados\acesso.json` e abra de novo para criar outra senha.
 - **Ligar junto com o computador:** ⚙️ Configurações › **Iniciar junto com o Windows**.
+- **Atualizar o bot:** é automático. Para atualizar na hora, vá em ⚙️ Configurações › **Atualização** › **Atualizar agora**.
 - **Cuidado:** a conexão com o WhatsApp não é oficial (funciona igual ao WhatsApp Web). Use o bot só para avaliações,
   nunca para disparo em massa, para não arriscar bloqueio do número.
 
 ## Para o desenvolvedor
 
 - Rodar em teste: `iniciar.bat` (ou `npm start`). Os dados ficam na pasta `dados`.
-- Gerar o executável: `npm run build`, que cria `dist\BotFarmaciaPaes\BotFarmaciaPaes.exe`.
+- Gerar o executável: `npm run build`, que cria `dist\BotFarmaciaPaes\BotFarmaciaPaes.exe` (precisa do Node 25.5 ou mais novo).
+- Publicar uma atualização: aumente a `version` no `package.json`, rode `npm run build` e depois
+  `node publicar.js "o que mudou"`. Os bots instalados encontram a versão nova (Releases do GitHub) e se
+  atualizam sozinhos fora do horário de atendimento, ou na hora pelo botão ⚙️ Configurações › **Atualização**.
