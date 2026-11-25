@@ -1,6 +1,6 @@
 {
   "name": "bot-avaliacao-farmacia-paes",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Bot de WhatsApp que pede nota de 0 a 10 do atendimento - Farmácia Paes, Beberibe",
   "main": "app.js",
   "private": true,

@@ -90,27 +90,37 @@ function criarCliente() {
     if (c !== client) return;
     log(`WhatsApp desconectado: ${motivo}`);
     eventos.emit('desconectado', motivo);
-    // Se o aparelho foi desconectado pelo celular, a sessão não vale mais: gera QR novo
-    if (/LOGOUT|UNPAIRED|CONFLICT|NAVIGATION/i.test(String(motivo))) novaSessao(`Desconectado (${motivo})`);
+    // Se o aparelho foi desconectado pelo celular, a sessão não vale mais: gera QR novo.
+    // Nos outros casos (página recarregou, conflito...) reconecta mantendo o login; se o login
+    // não valer mais, o próprio WhatsApp mostra um QR code novo.
+    if (/LOGOUT|UNPAIRED/i.test(String(motivo))) novaSessao(`Desconectado (${motivo})`);
     else reiniciar(`Desconectado (${motivo})`);
   });
   c.on('message_create', (msg) => tratarMensagem(msg).catch((e) => log(`Erro ao processar mensagem: ${e.stack || e.message}`)));
   return c;
 }
 
-// Vigia: se a conexão ficar presa sem QR e sem conectar, recomeça do zero
+// Vigia: se a conexão ficar presa sem QR e sem conectar, tenta de novo, esperando cada vez mais
+// (2, 4, 8 e depois a cada 15 minutos). NÃO apaga o login por causa disso: travar ao abrir costuma
+// ser internet lenta ou o WhatsApp Web fora do ar, e apagar a sessão só obrigaria a escanear o QR de novo.
+// Só recomeça do zero se o QR foi aceito e as conversas nunca terminam de sincronizar, várias vezes seguidas.
 let vigia = null;
 let falhasSeguidas = 0;
+const esperaTentativa = () => Math.min(2 * MIN * 2 ** falhasSeguidas, 15 * MIN);
 function vigiar() {
   clearTimeout(vigia);
+  const espera = esperaTentativa() + (status.estado === 'sincronizando' ? 2 * MIN : 0);
   vigia = setTimeout(() => {
-    if (status.estado === 'iniciando' || status.estado === 'sincronizando') {
-      falhasSeguidas++;
-      log(`A conexão não completou (${status.estado}). ${falhasSeguidas >= 2 ? 'Apagando a sessão e gerando um QR code novo.' : 'Tentando de novo.'}`);
-      if (falhasSeguidas >= 2) novaSessao('A conexão travou. Escaneie o QR code novo.');
-      else reiniciar('A conexão travou');
+    if (status.estado !== 'iniciando' && status.estado !== 'sincronizando') return;
+    falhasSeguidas++;
+    if (status.estado === 'sincronizando' && falhasSeguidas >= 4) {
+      log('As conversas não terminam de sincronizar. Apagando a sessão e gerando um QR code novo.');
+      novaSessao('A sincronização travou. Escaneie o QR code novo.');
+    } else {
+      log(`A conexão não completou (${status.estado}). Tentando de novo (tentativa ${falhasSeguidas + 1}).`);
+      reiniciar('A conexão travou');
     }
-  }, status.estado === 'sincronizando' ? 4 * MIN : 2 * MIN);
+  }, espera);
 }
 eventos.on('estado', (s) => {
   if (s.estado === 'conectado') falhasSeguidas = 0;
@@ -178,14 +188,11 @@ async function iniciar() {
     falhasSeguidas++;
     log(`Erro ao iniciar o WhatsApp: ${e.message}`);
     mudarEstado('desconectado', { ultimoErro: e.message });
-    // Navegador preso não é problema da sessão: não apaga o login, só tenta de novo
-    const navegadorPreso = /already running/i.test(e.message);
-    // Tenta de novo sozinho; na segunda falha seguida, recomeça com sessão nova
+    // Erro ao abrir o navegador não é problema do login: tenta de novo sem apagar a sessão
     setTimeout(() => {
       if (c !== client) return;
-      if (falhasSeguidas >= 2 && !navegadorPreso) novaSessao(`Erro ao iniciar: ${e.message}`);
-      else reiniciar(`Erro ao iniciar: ${e.message}`);
-    }, 20000);
+      reiniciar(`Erro ao iniciar: ${e.message}`);
+    }, Math.min(20000 * falhasSeguidas, 5 * MIN));
   });
 }
 
@@ -226,6 +233,48 @@ async function desconectar() {
 
 const conectado = () => client && status.estado === 'conectado';
 
+// ---------------------------------------------------------------- saúde da conexão
+// O WhatsApp Web às vezes recarrega a página sozinho (atualização do próprio WhatsApp). O bot
+// continuava achando que estava conectado, mas todo envio falhava ("detached Frame") até alguém
+// reiniciar. Agora, ao detectar isso, ele reconecta sozinho, mantendo o login.
+const ERRO_PAGINA = /detached Frame|Target closed|Session closed|Protocol error|Execution context was destroyed|browser has disconnected|Connection closed/i;
+
+function paginaCaiu(erro, onde) {
+  if (!ERRO_PAGINA.test(String(erro?.message || erro))) return false;
+  if (!ocupado) {
+    log(`A página do WhatsApp parou de responder (${onde}). Reconectando sem perder o login...`);
+    reiniciar('A página do WhatsApp parou de responder');
+  }
+  return true;
+}
+
+// Erros internos da biblioteca do WhatsApp (sem try/catch) também indicam a página caída
+process.on('unhandledRejection', (e) => { if (client && status.estado === 'conectado') paginaCaiu(e, 'erro interno'); });
+
+let falhasSaude = 0;
+setInterval(async () => {
+  if (!client || status.estado !== 'conectado' || ocupado) return;
+  const c = client;
+  try {
+    const estado = await Promise.race([
+      c.getState(),
+      new Promise((_, rejeitar) => setTimeout(() => rejeitar(new Error('sem resposta em 30s')), 30000)),
+    ]);
+    if (c !== client) return;
+    if (estado) { falhasSaude = 0; return; }
+    throw new Error('sem estado');
+  } catch (e) {
+    if (c !== client) return;
+    if (paginaCaiu(e, 'verificação')) { falhasSaude = 0; return; }
+    falhasSaude++;
+    if (falhasSaude >= 2) {
+      falhasSaude = 0;
+      log(`O WhatsApp não responde (${e.message}). Reconectando sem perder o login...`);
+      reiniciar('O WhatsApp parou de responder');
+    }
+  }
+}, 2 * MIN);
+
 // ---------------------------------------------------------------- envio
 
 const enviadosPeloBot = new Map(); // textos recém-enviados, para não confundir com o atendente
@@ -258,6 +307,7 @@ async function enviar(chatId, texto) {
     return await client.sendMessage(chatId, texto);
   } catch (e) {
     log(`Erro ao enviar para ${chatId}: ${e.message}`);
+    paginaCaiu(e, 'envio');
     return null;
   }
 }
